@@ -7,13 +7,11 @@ import (
 	"image"
 	"image/jpeg"
 	"log"
-	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/mattn/go-mjpeg"
@@ -31,23 +29,10 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	req, err := http.NewRequest("GET", *url, nil)
+	dec, err := mjpeg.NewDecoderFromURL(*url)
 	if err != nil {
 		log.Fatal(err)
 	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, param, err := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	boundary := param["boundary"]
-	if !strings.HasPrefix(boundary, "--") {
-		log.Fatal("boundary should be started with `--`")
-	}
-	dec := mjpeg.NewDecoder(res.Body, boundary[2:])
 
 	var mutex sync.Mutex
 	var img image.Image
@@ -71,6 +56,9 @@ func main() {
 		mutex.Lock()
 		err = jpeg.Encode(w, img, nil)
 		mutex.Unlock()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	http.HandleFunc("/mjpeg", func(w http.ResponseWriter, r *http.Request) {
