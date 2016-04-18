@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var mutex sync.Mutex
+	var mutex sync.RWMutex
 	var img image.Image
 
 	log.Println("Start streaming")
@@ -53,9 +53,9 @@ func main() {
 
 	http.HandleFunc("/jpeg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/jpeg")
-		mutex.Lock()
+		mutex.RLock()
 		err = jpeg.Encode(w, img, nil)
-		mutex.Unlock()
+		mutex.RUnlock()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -69,10 +69,14 @@ func main() {
 		header := textproto.MIMEHeader{}
 		var buf bytes.Buffer
 		for {
-			mutex.Lock()
+			mutex.RLock()
+			if img == nil {
+				http.Error(w, "Not Found", 404)
+				return
+			}
 			buf.Reset()
 			err = jpeg.Encode(&buf, img, nil)
-			mutex.Unlock()
+			mutex.RUnlock()
 			if err != nil {
 				break
 			}

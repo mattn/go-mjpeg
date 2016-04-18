@@ -7,6 +7,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -26,7 +27,7 @@ func NewDecoderFromResponse(res *http.Response) (*Decoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewDecoder(res.Body, param["boundary"]), nil
+	return NewDecoder(res.Body, strings.Trim(param["boundary"], "-")), nil
 }
 
 func NewDecoderFromURL(u string) (*Decoder, error) {
