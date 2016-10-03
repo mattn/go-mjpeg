@@ -42,17 +42,10 @@ func NewDecoderFromURL(u string) (*Decoder, error) {
 	return NewDecoderFromResponse(res)
 }
 
-func (d *Decoder) Decode(img *image.Image) error {
+func (d *Decoder) Decode() (image.Image, error) {
 	p, err := d.r.NextPart()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tmp, err := jpeg.Decode(p)
-	if err != nil {
-		return err
-	}
-	d.m.Lock()
-	*img = tmp
-	d.m.Unlock()
-	return nil
+	return jpeg.Decode(p)
 }
