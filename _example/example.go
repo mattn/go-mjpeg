@@ -40,13 +40,12 @@ func main() {
 	log.Println("Start streaming")
 	go func() {
 		for {
-			var tmp image.Image
-			err = dec.Decode(&tmp)
+			decodedImage, err := dec.Decode()
 			if err != nil {
 				break
 			}
 			mutex.Lock()
-			img = tmp
+			img = decodedImage
 			mutex.Unlock()
 		}
 	}()
