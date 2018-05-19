@@ -90,18 +90,31 @@ func (s *Stream) Update(b []byte) {
 	}
 }
 
-func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c := make(chan []byte)
+func (s *Stream) add(c chan []byte) {
 	s.m.Lock()
 	s.s[c] = struct{}{}
 	s.m.Unlock()
+}
 
-	defer func() {
-		close(c)
-		s.m.Lock()
-		delete(s.s, c)
-		s.m.Unlock()
-	}()
+func (s *Stream) destroy(c chan []byte) {
+	close(c)
+	s.m.Lock()
+	delete(s.s, c)
+	s.m.Unlock()
+}
+
+func (s *Stream) Current() []byte {
+	c := make(chan []byte)
+	s.add(c)
+	defer s.destroy(c)
+
+	return <-c
+}
+
+func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	c := make(chan []byte)
+	s.add(c)
+	defer s.destroy(c)
 
 	m := multipart.NewWriter(w)
 	defer m.Close()

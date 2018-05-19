@@ -4,17 +4,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
-	"fmt"
-	"image"
 	"image/jpeg"
 	"log"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"os"
-	"runtime"
-	"sync"
+	"os/signal"
 
 	"github.com/mattn/go-mjpeg"
 )
@@ -29,76 +25,48 @@ func main() {
 		os.Exit(1)
 	}
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	dec, err := mjpeg.NewDecoderFromURL(*url)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var mutex sync.RWMutex
-	var img image.Image
-
-	log.Println("Start streaming")
+	server := &http.Server{Addr: *addr}
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt)
 	go func() {
+		<-sc
+		server.Shutdown(context.Background())
+	}()
+
+	stream := mjpeg.NewStream()
+
+	go func() {
+		var buf bytes.Buffer
 		for {
-			decodedImage, err := dec.Decode()
+			img, err := dec.Decode()
 			if err != nil {
 				break
 			}
-			mutex.Lock()
-			img = decodedImage
-			mutex.Unlock()
+			buf.Reset()
+			err = jpeg.Encode(&buf, img, nil)
+			if err != nil {
+				break
+			}
+			stream.Update(buf.Bytes())
 		}
 	}()
 
 	http.HandleFunc("/jpeg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/jpeg")
-		mutex.RLock()
-		err = jpeg.Encode(w, img, nil)
-		mutex.RUnlock()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		w.Write(stream.Current())
 	})
 
-	http.HandleFunc("/mjpeg", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Serve streaming")
-		m := multipart.NewWriter(w)
-		w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary="+m.Boundary())
-		w.Header().Set("Connection", "close")
-		header := textproto.MIMEHeader{}
-		var buf bytes.Buffer
-		for {
-			mutex.RLock()
-			if img == nil {
-				http.Error(w, "Not Found", 404)
-				return
-			}
-			buf.Reset()
-			err = jpeg.Encode(&buf, img, nil)
-			mutex.RUnlock()
-			if err != nil {
-				break
-			}
-			header.Set("Content-Type", "image/jpeg")
-			header.Set("Content-Length", fmt.Sprint(buf.Len()))
-			mw, err := m.CreatePart(header)
-			if err != nil {
-				break
-			}
-			mw.Write(buf.Bytes())
-			if flusher, ok := mw.(http.Flusher); ok {
-				flusher.Flush()
-			}
-		}
-		log.Println("Stop streaming")
-	})
+	http.HandleFunc("/mjpeg", stream.ServeHTTP)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<img src="/mjpeg" />`))
 	})
 
-	http.ListenAndServe(*addr, nil)
+	server.ListenAndServe()
 }
