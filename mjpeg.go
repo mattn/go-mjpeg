@@ -1,6 +1,7 @@
 package mjpeg
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -70,6 +71,13 @@ func NewStream() *Stream {
 	}
 }
 
+func NewStreamWithInterval(interval time.Duration) *Stream {
+	return &Stream{
+		s:        make(map[chan []byte]struct{}),
+		Interval: interval,
+	}
+}
+
 func (s *Stream) Close() error {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -77,18 +85,23 @@ func (s *Stream) Close() error {
 		close(c)
 		delete(s.s, c)
 	}
+	s.s = nil
 	return nil
 }
 
-func (s *Stream) Update(b []byte) {
+func (s *Stream) Update(b []byte) error {
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.s == nil {
+		return errors.New("stream was closed")
+	}
 	for c := range s.s {
 		select {
 		case c <- b:
 		default:
 		}
 	}
+	return nil
 }
 
 func (s *Stream) add(c chan []byte) {
@@ -98,9 +111,11 @@ func (s *Stream) add(c chan []byte) {
 }
 
 func (s *Stream) destroy(c chan []byte) {
-	close(c)
 	s.m.Lock()
-	delete(s.s, c)
+	if s.s != nil {
+		close(c)
+		delete(s.s, c)
+	}
 	s.m.Unlock()
 }
 
