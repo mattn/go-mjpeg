@@ -1,3 +1,5 @@
+// +build ignore
+
 package main
 
 import (
@@ -5,60 +7,77 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"os"
-	"runtime"
+	"os/signal"
 	"sync"
 
-	"github.com/mattn/go-mjpeg"
+	"gocv.io/x/gocv"
 )
 
-var url = flag.String("url", "", "Camera host")
-var addr = flag.String("addr", ":8080", "Server address")
+var (
+	camera = flag.Int("camera", 0, "Camera ID")
+	addr   = flag.String("addr", ":8080", "Server address")
+)
 
 func main() {
 	flag.Parse()
-	if *url == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	dec, err := mjpeg.NewDecoderFromURL(*url)
+	webcam, err := gocv.VideoCaptureDevice(camera)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("unable to init web cam: %v", err)
+		return
 	}
+	defer webcam.Close()
 
 	var mutex sync.RWMutex
 	var img image.Image
 
+	classifier := gocv.NewCascadeClassifier()
+	defer classifier.Close()
+	if !classifier.Load("haarcascade_frontalface_default.xml") {
+		log.Println("unable to load haarcascade_frontalface_default.xml")
+		return
+	}
+
+	loop := true
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt)
+	go func() {
+		<-sc
+		loop = false
+	}()
+
 	log.Println("Start streaming")
 	go func() {
-		for {
-			decodedImage, err := dec.Decode()
+		im := gocv.NewMat()
+		for loop {
+			if ok := webcam.Read(&im); !ok {
+				continue
+			}
+
+			rects := classifier.DetectMultiScale(im)
+			for _, r := range rects {
+				face := im.Region(r)
+				face.Close()
+				gocv.Rectangle(&im, r, color.RGBA{0, 0, 255, 0}, 2)
+			}
+			buf, err := gocv.IMEncode(".jpg", im)
 			if err != nil {
-				break
+				continue
 			}
 			mutex.Lock()
-			img = decodedImage
+			if tmp, err := jpeg.Decode(bytes.NewReader(buf)); err == nil {
+				img = tmp
+			}
 			mutex.Unlock()
 		}
 	}()
-
-	http.HandleFunc("/jpeg", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/jpeg")
-		mutex.RLock()
-		err = jpeg.Encode(w, img, nil)
-		mutex.RUnlock()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
 
 	http.HandleFunc("/mjpeg", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Serve streaming")
@@ -67,7 +86,7 @@ func main() {
 		w.Header().Set("Connection", "close")
 		header := textproto.MIMEHeader{}
 		var buf bytes.Buffer
-		for {
+		for loop {
 			mutex.RLock()
 			if img == nil {
 				http.Error(w, "Not Found", 404)
