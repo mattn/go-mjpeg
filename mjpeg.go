@@ -59,8 +59,9 @@ func (d *Decoder) Decode() (image.Image, error) {
 }
 
 type Stream struct {
-	m sync.Mutex
-	s map[chan []byte]struct{}
+	m        sync.Mutex
+	s        map[chan []byte]struct{}
+	Interval time.Duration
 }
 
 func NewStream() *Stream {
@@ -124,6 +125,8 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := textproto.MIMEHeader{}
 	st := fmt.Sprint(time.Now().Unix())
 	for {
+		time.Sleep(s.Interval)
+
 		b, ok := <-c
 		if !ok {
 			break

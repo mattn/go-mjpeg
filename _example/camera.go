@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/mattn/go-mjpeg"
 
@@ -47,6 +48,7 @@ func main() {
 	}()
 
 	stream := mjpeg.NewStream()
+	stream.Interval = 200 * time.Millisecond
 
 	go func() {
 		im := gocv.NewMat()
