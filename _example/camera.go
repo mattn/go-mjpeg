@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/mattn/go-mjpeg"
@@ -18,12 +19,14 @@ import (
 )
 
 var (
-	camera = flag.Int("camera", 0, "Camera ID")
-	addr   = flag.String("addr", ":8080", "Server address")
+	camera   = flag.Int("camera", 0, "Camera ID")
+	addr     = flag.String("addr", ":8080", "Server address")
+	xml      = flag.String("classifier", "haarcascade_frontalface_default.xml", "classifier XML file")
+	interval = flag.Duration("interval", 200*time.Millisecond, "interval")
 )
 
-func main() {
-	flag.Parse()
+func capture(wg *sync.WaitGroup, stream *mjpeg.Stream) {
+	defer wg.Done()
 
 	webcam, err := gocv.VideoCaptureDevice(*camera)
 	if err != nil {
@@ -34,42 +37,42 @@ func main() {
 
 	classifier := gocv.NewCascadeClassifier()
 	defer classifier.Close()
-	if !classifier.Load("haarcascade_frontalface_default.xml") {
-		log.Println("unable to load haarcascade_frontalface_default.xml")
+	if !classifier.Load(*xml) {
+		log.Println("unable to load:", *xml)
 		return
 	}
 
-	server := &http.Server{Addr: *addr}
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, os.Interrupt)
-	go func() {
-		<-sc
-		server.Shutdown(context.Background())
-	}()
-
-	stream := mjpeg.NewStream()
-	stream.Interval = 200 * time.Millisecond
-
-	go func() {
-		im := gocv.NewMat()
-		for {
-			if ok := webcam.Read(&im); !ok {
-				continue
-			}
-
-			rects := classifier.DetectMultiScale(im)
-			for _, r := range rects {
-				face := im.Region(r)
-				face.Close()
-				gocv.Rectangle(&im, r, color.RGBA{0, 0, 255, 0}, 2)
-			}
-			buf, err := gocv.IMEncode(".jpg", im)
-			if err != nil {
-				continue
-			}
-			stream.Update(buf)
+	im := gocv.NewMat()
+	for {
+		if ok := webcam.Read(&im); !ok {
+			continue
 		}
-	}()
+
+		rects := classifier.DetectMultiScale(im)
+		for _, r := range rects {
+			face := im.Region(r)
+			face.Close()
+			gocv.Rectangle(&im, r, color.RGBA{0, 0, 255, 0}, 2)
+		}
+		buf, err := gocv.IMEncode(".jpg", im)
+		if err != nil {
+			continue
+		}
+		err = stream.Update(buf)
+		if err != nil {
+			break
+		}
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	stream := mjpeg.NewStreamWithInterval(*interval)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go capture(&wg, stream)
 
 	http.HandleFunc("/mjpeg", stream.ServeHTTP)
 
@@ -78,5 +81,15 @@ func main() {
 		w.Write([]byte(`<img src="/mjpeg" />`))
 	})
 
+	server := &http.Server{Addr: *addr}
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt)
+	go func() {
+		<-sc
+		server.Shutdown(context.Background())
+	}()
 	server.ListenAndServe()
+	stream.Close()
+
+	wg.Wait()
 }
