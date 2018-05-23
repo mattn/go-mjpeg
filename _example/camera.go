@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	camera   = flag.Int("camera", 0, "Camera ID")
+	camera   = flag.String("camera", "0", "Camera ID")
 	addr     = flag.String("addr", ":8080", "Server address")
 	xml      = flag.String("classifier", "haarcascade_frontalface_default.xml", "classifier XML file")
 	interval = flag.Duration("interval", 200*time.Millisecond, "interval")
@@ -28,7 +29,13 @@ var (
 func capture(wg *sync.WaitGroup, stream *mjpeg.Stream) {
 	defer wg.Done()
 
-	webcam, err := gocv.VideoCaptureDevice(*camera)
+	var webcam *gocv.VideoCapture
+	var err error
+	if id, err := strconv.ParseInt(*camera, 10, 64); err == nil {
+		webcam, err = gocv.VideoCaptureDevice(int(id))
+	} else {
+		webcam, err = gocv.VideoCaptureFile(*camera)
+	}
 	if err != nil {
 		log.Println("unable to init web cam: %v", err)
 		return
