@@ -26,7 +26,7 @@ var (
 	interval = flag.Duration("interval", 200*time.Millisecond, "interval")
 )
 
-func capture(wg *sync.WaitGroup, stream *mjpeg.Stream) {
+func capture(ctx context.Context, wg *sync.WaitGroup, stream *mjpeg.Stream) {
 	defer wg.Done()
 
 	var webcam *gocv.VideoCapture
@@ -50,7 +50,7 @@ func capture(wg *sync.WaitGroup, stream *mjpeg.Stream) {
 	}
 
 	im := gocv.NewMat()
-	for {
+	for len(ctx.Done()) == 0 {
 		if ok := webcam.Read(&im); !ok {
 			continue
 		}
@@ -77,9 +77,10 @@ func main() {
 
 	stream := mjpeg.NewStreamWithInterval(*interval)
 
+	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go capture(&wg, stream)
+	go capture(ctx, &wg, stream)
 
 	http.HandleFunc("/mjpeg", stream.ServeHTTP)
 
@@ -93,10 +94,11 @@ func main() {
 	signal.Notify(sc, os.Interrupt)
 	go func() {
 		<-sc
-		server.Shutdown(context.Background())
+		server.Shutdown(ctx)
 	}()
 	server.ListenAndServe()
 	stream.Close()
+	cancel()
 
 	wg.Wait()
 }
