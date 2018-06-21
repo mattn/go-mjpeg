@@ -50,25 +50,30 @@ func capture(ctx context.Context, wg *sync.WaitGroup, stream *mjpeg.Stream) {
 	}
 
 	im := gocv.NewMat()
-	for len(ctx.Done()) == 0 {
-		if ok := webcam.Read(&im); !ok {
-			continue
-		}
 
-		rects := classifier.DetectMultiScale(im)
-		for _, r := range rects {
-			face := im.Region(r)
-			face.Close()
-			gocv.Rectangle(&im, r, color.RGBA{0, 0, 255, 0}, 2)
-		}
-		buf, err := gocv.IMEncode(".jpg", im)
-		if err != nil {
-			continue
+	for len(ctx.Done()) == 0 {
+		var buf []byte
+		if stream.NWatch() > 0 {
+			if ok := webcam.Read(&im); !ok {
+				continue
+			}
+
+			rects := classifier.DetectMultiScale(im)
+			for _, r := range rects {
+				face := im.Region(r)
+				face.Close()
+				gocv.Rectangle(&im, r, color.RGBA{0, 0, 255, 0}, 2)
+			}
+			buf, err = gocv.IMEncode(".jpg", im)
+			if err != nil {
+				continue
+			}
 		}
 		err = stream.Update(buf)
 		if err != nil {
 			break
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

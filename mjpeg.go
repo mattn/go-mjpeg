@@ -119,6 +119,10 @@ func (s *Stream) destroy(c chan []byte) {
 	s.m.Unlock()
 }
 
+func (s *Stream) NWatch() int {
+	return len(s.s)
+}
+
 func (s *Stream) Current() []byte {
 	c := make(chan []byte)
 	s.add(c)
