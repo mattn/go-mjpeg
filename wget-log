@@ -6,4 +6,21 @@ HTTP-запрос отправлен. Ожидание ответа… Не по
 
 --2020-03-16 11:54:32--  (попытка: 2)  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
 Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
-HTTP-запрос отправлен. Ожидание ответа… 
+HTTP-запрос отправлен. Ожидание ответа… Не получено никаких данных.
+Продолжение попыток.
+
+--2020-03-16 11:55:24--  (попытка: 3)  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
+Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
+HTTP-запрос отправлен. Ожидание ответа… Не получено никаких данных.
+Продолжение попыток.
+
+--2020-03-16 11:56:17--  (попытка: 4)  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
+Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
+HTTP-запрос отправлен. Ожидание ответа… Не получено никаких данных.
+Продолжение попыток.
+
+--2020-03-16 11:57:11--  (попытка: 5)  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
+Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
+HTTP-запрос отправлен. Ожидание ответа… 502 Bad Gateway
+2020-03-16 11:57:49 ОШИБКА 502: Bad Gateway.
+

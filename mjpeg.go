@@ -97,10 +97,7 @@ func (s *Stream) Update(b []byte) error {
 		return errors.New("stream was closed")
 	}
 	for c := range s.s {
-		select {
-		case c <- b:
-		default:
-		}
+		c <- b
 	}
 	return nil
 }
@@ -114,8 +111,8 @@ func (s *Stream) add(c chan []byte) {
 func (s *Stream) destroy(c chan []byte) {
 	s.m.Lock()
 	if s.s != nil {
-		close(c)
 		delete(s.s, c)
+		close(c)
 	}
 	s.m.Unlock()
 }
