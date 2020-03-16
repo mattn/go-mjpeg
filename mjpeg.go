@@ -67,7 +67,8 @@ type Stream struct {
 
 func NewStream() *Stream {
 	return &Stream{
-		s: make(map[chan []byte]struct{}),
+		s:        make(map[chan []byte]struct{}),
+		Interval: time.Millisecond,
 	}
 }
 
@@ -143,27 +144,35 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "close")
 	h := textproto.MIMEHeader{}
 	st := fmt.Sprint(time.Now().Unix())
+	timeout := time.Now()
 	for {
 		time.Sleep(s.Interval)
 
-		b, ok := <-c
-		if !ok {
-			break
-		}
-		h.Set("Content-Type", "image/jpeg")
-		h.Set("Content-Length", fmt.Sprint(len(b)))
-		h.Set("X-StartTime", st)
-		h.Set("X-TimeStamp", fmt.Sprint(time.Now().Unix()))
-		mw, err := m.CreatePart(h)
-		if err != nil {
-			break
-		}
-		_, err = mw.Write(b)
-		if err != nil {
-			break
-		}
-		if flusher, ok := mw.(http.Flusher); ok {
-			flusher.Flush()
+		select {
+		case b, ok := <-c:
+			if !ok {
+				return
+			}
+			timeout = time.Now()
+			h.Set("Content-Type", "image/jpeg")
+			h.Set("Content-Length", fmt.Sprint(len(b)))
+			h.Set("X-StartTime", st)
+			h.Set("X-TimeStamp", fmt.Sprint(time.Now().Unix()))
+			mw, err := m.CreatePart(h)
+			if err != nil {
+				return
+			}
+			_, err = mw.Write(b)
+			if err != nil {
+				return
+			}
+			if flusher, ok := mw.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		default:
+			if time.Since(timeout) > time.Minute {
+				return
+			}
 		}
 	}
 }
