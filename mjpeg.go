@@ -6,7 +6,6 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -174,12 +173,6 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		default:
 			if time.Since(timeout) > time.Minute {
-				data, err := ioutil.ReadAll(r.Body)
-				if err != nil {
-					fmt.Println("ServeHTTP err", err)
-					return
-				}
-				fmt.Println("ServeHTTP answer", string(data))
 				return
 			}
 		}
