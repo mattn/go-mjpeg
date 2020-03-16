@@ -100,7 +100,6 @@ func (s *Stream) Update(b []byte) error {
 		select {
 		case c <- b:
 		default:
-			fmt.Println("no updates")
 		}
 	}
 	return nil
@@ -156,6 +155,8 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
+			fmt.Println("update")
+
 			timeout = time.Now()
 			h.Set("Content-Type", "image/jpeg")
 			h.Set("Content-Length", fmt.Sprint(len(b)))
@@ -173,6 +174,7 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				flusher.Flush()
 			}
 		default:
+			fmt.Println("no updates")
 			if time.Since(timeout) > time.Minute {
 				return
 			}

@@ -1,0 +1,9 @@
+--2020-03-16 11:53:41--  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
+Распознаётся unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)… 37.139.63.50
+Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
+HTTP-запрос отправлен. Ожидание ответа… Не получено никаких данных.
+Продолжение попыток.
+
+--2020-03-16 11:54:32--  (попытка: 2)  https://unoto-platform-modules-video-dev.dev.ladcloud.ru/video/1.0/stream?id=7
+Подключение к unoto-platform-modules-video-dev.dev.ladcloud.ru (unoto-platform-modules-video-dev.dev.ladcloud.ru)|37.139.63.50|:443... соединение установлено.
+HTTP-запрос отправлен. Ожидание ответа… 
