@@ -100,6 +100,7 @@ func (s *Stream) Update(b []byte) error {
 		select {
 		case c <- b:
 		default:
+			fmt.Println("no updates")
 		}
 	}
 	return nil
