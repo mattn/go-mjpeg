@@ -78,6 +78,12 @@ func NewStreamWithInterval(interval time.Duration) *Stream {
 	}
 }
 
+func (s *Stream) Closed() bool {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.s == nil
+}
+
 func (s *Stream) Close() error {
 	s.m.Lock()
 	defer s.m.Unlock()
