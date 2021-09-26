@@ -1,12 +1,11 @@
+//go:build ignore
 // +build ignore
 
 package main
 
 import (
-	"bytes"
 	"context"
 	"flag"
-	"image/jpeg"
 	"log"
 	"net/http"
 	"os"
@@ -31,18 +30,12 @@ func proxy(wg *sync.WaitGroup, stream *mjpeg.Stream) {
 		log.Fatal(err)
 	}
 
-	var buf bytes.Buffer
 	for {
-		img, err := dec.Decode()
+		b, err := dec.DecodeRaw()
 		if err != nil {
 			break
 		}
-		buf.Reset()
-		err = jpeg.Encode(&buf, img, nil)
-		if err != nil {
-			break
-		}
-		err = stream.Update(buf.Bytes())
+		err = stream.Update(b)
 		if err != nil {
 			break
 		}

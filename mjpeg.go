@@ -1,6 +1,7 @@
 package mjpeg
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"image"
@@ -57,6 +58,20 @@ func (d *Decoder) Decode() (image.Image, error) {
 		return nil, err
 	}
 	return jpeg.Decode(p)
+}
+
+// DecodeRaw do decoding raw bytes
+func (d *Decoder) DecodeRaw() ([]byte, error) {
+	p, err := d.r.NextPart()
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, p)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 type Stream struct {
