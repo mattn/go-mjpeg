@@ -60,6 +60,15 @@ func (d *Decoder) Decode() (image.Image, error) {
 	return jpeg.Decode(p)
 }
 
+//　Part just return the multipart data structure
+func (d *Decoder) Part() (*multipart.Part, error) {
+	p, err := d.r.NextPart()
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 // DecodeRaw do decoding raw bytes
 func (d *Decoder) DecodeRaw() ([]byte, error) {
 	p, err := d.r.NextPart()
