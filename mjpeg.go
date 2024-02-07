@@ -16,10 +16,33 @@ import (
 	"time"
 )
 
+// DecoderFrame decode motion jpeg frame with headers
+type DecoderFrame struct {
+	part *multipart.Part
+}
+
+// Bytes return buffer of the frame
+func (df *DecoderFrame) Bytes() ([]byte, error) {
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, df.part); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// GetMultipart return headers of multipart
+func (df *DecoderFrame) Header() textproto.MIMEHeader {
+	return df.part.Header
+}
+
+// GetMultipart return multipart
+func (df *DecoderFrame) GetMultipart() *multipart.Part {
+	return df.part
+}
+
 // Decoder decode motion jpeg
 type Decoder struct {
 	r *multipart.Reader
-	m sync.Mutex
 }
 
 // NewDecoder return new instance of Decoder
@@ -72,6 +95,18 @@ func (d *Decoder) DecodeRaw() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// NextPart get next part
+func (d *Decoder) DecodeFrame() (*DecoderFrame, error) {
+	p, err := d.r.NextPart()
+	if err != nil {
+		return nil, err
+	}
+	ret := DecoderFrame{
+		part: p,
+	}
+	return &ret, nil
 }
 
 type Stream struct {
